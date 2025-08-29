@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <title>Main | IOT CONTROL SYSTEM</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+<div class="bg"></div>
+<div class="center-wrap">
+  <div class="phone-frame">
+    <div class="brand-row">
+        <img src="assets/logo.png" alt="logo" width="84" height="84">
+        <div class="brand app-title">IOT CONTROL SYSTEM</div>
+      </div>
+    <div class="topbar">
+      <div class="actions">
+        <button id="btnProfile" class="btn">Profile</button>
+      </div>
+      <div class="title" id="welcomeUser">Chào mừng</div>
+      <div class="actions">
+        <button id="btnLogout" class="btn danger">Đăng xuất</button>
+      </div>
+    </div>
+
+    <div class="screen">
+      <div class="big-title">Thiết bị</div>
+      <div class="helper small">Bật/Tắt đồng bộ realtime. Mạch đọc field <b>status</b> từ Firestore.</div>
+      <div class="hr"></div>
+
+      <div id="deviceList" class="list"></div>
+      <div id="msg" class="notice" style="display:none;"></div>
+    </div>
+
+    <div class="bottomnav">
+      <a class="tab active" href="main.html">Home</a>
+      <a class="tab" href="history.html">History</a>
+      <a class="tab" href="notifications.html">Notification</a>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { requireAuth, wireTopbar } from "./js/auth-guard.js";
+import { getUserDoc, listenDevicesByCircuit, toggleDevice, addHistoryWithCircuit } from "./js/firestore.js";
+import { renderDevices } from "./js/ui.js";
+import { fmtTime, qs, toast } from "./js/utils.js";
+
+const user = await requireAuth();
+wireTopbar(user);
+
+const udoc = await getUserDoc(user.uid);
+const circuitId = udoc?.circuitId || "";
+
+const listEl = qs("#deviceList");
+const msg = qs("#msg");
+
+if(!circuitId){
+  listEl.innerHTML = `<div class="empty">Chưa có thiết bị (chưa liên kết Id mạch). Vào <b>Profile</b> để cập nhật.</div>`;
+}else{
+  const unsub = listenDevicesByCircuit(circuitId, (devices)=>{
+    renderDevices(listEl, devices, async (dev, newState)=>{
+      try{
+        // Cập nhật device
+        await toggleDevice(dev.id, newState);
+        // Ghi lịch sử kèm circuitId (để dễ query theo mạch)
+        await addHistoryWithCircuit({ ...dev, status:newState }, circuitId);
+      }catch(e){
+        toast(msg, e.message || "Không thể đổi trạng thái");
+      }
+    });
+  });
+  window.addEventListener("beforeunload", ()=>unsub && unsub());
+}
+</script>
+</body>
+</html>
