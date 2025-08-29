@@ -33,7 +33,7 @@ html,body{
 
 .phone-frame{
   width: 420px; max-width: 95vw;
-  height: 850px;
+  height: 800px;
   background: var(--card-bg);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
